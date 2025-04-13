@@ -7,36 +7,6 @@ typedef struct pthread_seqlock { /* TODO: implement the structure */
    pthread_mutex_t write_mutex;
 } pthread_seqlock_t;
 
-// static inline void pthread_seqlock_init(pthread_seqlock_t *rw)
-// {
-//    /* TODO: ... */
-// }
-
-// static inline void pthread_seqlock_wrlock(pthread_seqlock_t *rw)
-// {
-//    /* TODO: ... */
-// }
-
-// static inline void pthread_seqlock_wrunlock(pthread_seqlock_t *rw)
-// {
-//    /* TODO: ... */
-// }
-
-// static inline unsigned pthread_seqlock_rdlock(pthread_seqlock_t *rw)
-// {
-//    /* TODO: ... */
-
-//     return 0;
-// }
-
-
-// static inline unsigned pthread_seqlock_rdunlock(pthread_seqlock_t *rw)
-// {
-//    /* TODO: ... */
-
-//     return 0;
-// }
-
 int pthread_seqlock_init(pthread_seqlock_t *seqlock){
    // if(!seqlock) return -1;
    seqlock->sequence = 0;
@@ -46,7 +16,7 @@ int pthread_seqlock_init(pthread_seqlock_t *seqlock){
 int pthread_seqlock_wrlock(pthread_seqlock_t *rw)
 {
    /* TODO: ... */
-   // if (!rw) return -1;
+   if (!rw) return -1;
     
    int ret = pthread_mutex_lock(&rw->write_mutex);
    if (ret != 0) return ret;
@@ -60,7 +30,7 @@ int pthread_seqlock_wrlock(pthread_seqlock_t *rw)
 int pthread_seqlock_wrunlock(pthread_seqlock_t *rw)
 {
    /* TODO: ... */
-   // if (!rw) return -1;
+   if (!rw) return -1;
    __asm__ __volatile__("" ::: "memory");
    __sync_add_and_fetch(&rw->sequence, 1);
 
@@ -70,7 +40,7 @@ int pthread_seqlock_wrunlock(pthread_seqlock_t *rw)
 int pthread_seqlock_rdlock(pthread_seqlock_t *rw)
 {
    /* TODO: ... */
-   // if(!rw) return -1;
+   if(!rw) return -1;
    unsigned int seq;
    do{
       seq = rw->sequence;
@@ -96,7 +66,7 @@ int pthread_seqlock_rdlock(pthread_seqlock_t *rw)
 int pthread_seqlock_rdunlock(pthread_seqlock_t *rw)
 {
    /* TODO: ... */
-   // if (!rw) return -1;
+   if (!rw) return -1;
    __asm__ __volatile__("" ::: "memory");
    return 0;
 }
