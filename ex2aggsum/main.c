@@ -6,6 +6,8 @@
 #include "utils.h"
 #include <errno.h>
 #include <limits.h>
+#include <pthread.h>
+#include <sys/wait.h>
 
 /** process command line argument.
  *  values are made available through the 'conf' struct.
@@ -35,20 +37,46 @@ extern int generate_array_data (int* buf, int arraysize, int seednum);
 /** display help */
 extern void help (int xcode);
 
-void* sum_worker (struct _range idx_range);
+void* sum_worker (void *arg);
 long validate_sum(int arraysize);
 
 /* Global sum buffer */
 long sumbuf = 0;
 int* shrdarrbuf;
-pthread_mutex_t mtx;
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
 
-void* sum_worker (struct _range idx_range) {
-   int i;
+void* sum_worker (void *arg) {
+   struct _range *range = (struct _range*)arg;
+   long partial_sum = 0;
    
-   //printf("In worker from %d to %d\n", idx_range.start, idx_range.end);
+   for (int i = range->start; i <= range->end; i++) {
+      partial_sum += shrdarrbuf[i];
+   }
    
-   return 0;
+   pthread_mutex_lock(&mtx);
+   sumbuf += partial_sum;
+   pthread_mutex_unlock(&mtx);
+
+   return NULL;
+   
+   // int i;
+   
+   // printf("In worker from %d to %d\n", idx_range.start, idx_range.end);
+   // printf("-----------------------------------");
+   // long partial_sum = 0;
+    
+   // for (i = idx_range.start; i <= idx_range.end; i++) {
+   //    partial_sum += shrdarrbuf[i];
+   //    printf("In worker from %d to %d\n", idx_range.start, idx_range.end);
+   // }
+   
+   // printf("-----------------------------------");
+   // pthread_mutex_lock(&mtx);
+   // sumbuf += partial_sum;
+   // printf("In worker from %d to %d\n", idx_range.start, idx_range.end);
+   // pthread_mutex_unlock(&mtx);
+   
+   // return 0;
 		
 }
 
@@ -117,15 +145,15 @@ int main(int argc, char * argv[]) {
    tid = malloc (appconf.tnum * sizeof(pthread_t));
 
    for (i=0; i < appconf.tnum; i++)
-      pthread_create(&tid[i], NULL, sum_worker, (
-                     struct _range) (thread_idx_range[i]));
+      // pthread_create(&tid[i], NULL, sum_worker, (struct _range) (thread_idx_range[i]));
+      pthread_create(&tid[i], NULL, sum_worker, &thread_idx_range[i]);
    for (i=0; i < appconf.tnum; i++)
       pthread_join(tid[i], NULL);
    fflush(stdout);
 	
    printf("%s gives sum result %ld\n", PACKAGE, sumbuf);
 
-   waitpid(pid);
+   waitpid(pid, NULL, 0);
       exit(0);
 }
 

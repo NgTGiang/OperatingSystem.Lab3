@@ -1,4 +1,7 @@
 
+#ifndef UTILS_H
+#define UTILS_H
+
 #define PACKAGE "aggsum"
 #define VERSION "0.01"
 
@@ -17,7 +20,9 @@ struct _appconf {
   int arrsz;
   int tnum;
   int seednum;
-} appconf;
+};
+
+extern struct _appconf appconf;
 
 struct _range {
   int start;
@@ -51,3 +56,5 @@ int generate_array_data (int* buf, int arraysize, int seednum);
 
 /** display help */
 void help (int xcode);
+
+#endif // UTILS_H

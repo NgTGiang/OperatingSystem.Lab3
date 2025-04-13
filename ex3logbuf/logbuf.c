@@ -10,6 +10,11 @@
 char logbuf[MAX_BUFFER_SLOT][MAX_LOG_LENGTH];
 
 int count;
+int should_exit = 0;
+
+pthread_mutex_t buffer_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t buffer_not_full = PTHREAD_COND_INITIALIZER;
+pthread_cond_t buffer_not_empty = PTHREAD_COND_INITIALIZER;
 void flushlog();
 
 struct _args
@@ -22,12 +27,22 @@ void *wrlog(void *data)
    char str[MAX_LOG_LENGTH];
    int id = *(int*) data;
 
-   usleep(20);
+   pthread_mutex_lock(&buffer_mutex);
+   while (count >= MAX_BUFFER_SLOT) {
+      pthread_cond_wait(&buffer_not_full, &buffer_mutex);
+   }
+
+   // usleep(20);
    sprintf(str, "%d", id);
    strcpy(logbuf[count], str);
    count = (count > MAX_BUFFER_SLOT)? count :(count + 1); /* Only increase count to size MAX_BUFFER_SLOT*/
-   printf("wrlog(): %d \n", id);
+   // printf("wrlog(): %d \n", id);
 
+   if (count == MAX_BUFFER_SLOT) {
+      pthread_cond_signal(&buffer_not_empty);
+   }
+   pthread_mutex_unlock(&buffer_mutex);
+   usleep(1000);
    return 0;
 }
 
@@ -36,8 +51,14 @@ void flushlog()
    int i;
    char nullval[MAX_LOG_LENGTH];
 
-   printf("flushlog()\n");
+   // printf("flushlog()\n");
    sprintf(nullval, "%d", -1);
+
+   pthread_mutex_lock(&buffer_mutex);
+   while (count < MAX_BUFFER_SLOT && !should_exit) {
+      pthread_cond_wait(&buffer_not_empty, &buffer_mutex);
+   }
+
    for (i = 0; i < count; i++)
    {
       printf("Slot  %i: %s\n", i, logbuf[i]);
@@ -49,17 +70,20 @@ void flushlog()
    /*Reset buffer */
    count = 0;
 
+   pthread_cond_broadcast(&buffer_not_full);
+   pthread_mutex_unlock(&buffer_mutex);
    return;
 
 }
 
 void *timer_start(void *args)
 {
-   while (1)
+   while (!should_exit)
    {
       flushlog();
       /*Waiting until the next timeout */
       usleep(((struct _args *) args)->interval);
+      pthread_cond_signal(&buffer_not_empty);
    }
 }
 
@@ -75,6 +99,10 @@ int main()
    args.interval = 500e3;
    /*500 msec ~ 500 * 1000 usec */
 
+   pthread_mutex_init(&buffer_mutex, NULL);
+   pthread_cond_init(&buffer_not_full, NULL);
+   pthread_cond_init(&buffer_not_empty, NULL);
+
    /*Setup periodically invoke flushlog() */
    pthread_create(&lgrid, NULL, &timer_start, (void*) &args);
 
@@ -87,6 +115,10 @@ int main()
 
    for (i = 0; i < MAX_LOOPS; i++)
       pthread_join(tid[i], NULL);
+
+   pthread_mutex_destroy(&buffer_mutex);
+   pthread_cond_destroy(&buffer_not_full);
+   pthread_cond_destroy(&buffer_not_empty);
 
    sleep(5);
 
